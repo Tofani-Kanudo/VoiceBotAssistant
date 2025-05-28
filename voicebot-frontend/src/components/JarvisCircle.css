@@ -1,0 +1,110 @@
+/* JarvisCircle.css */
+.jarvis-circle {
+  width: 120px; /* Adjust size as needed */
+  height: 120px;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: background-color 0.5s ease; /* Smooth background transition if needed */
+}
+
+.jarvis-circle-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.wave {
+  position: absolute;
+  border-radius: 50%;
+  background-color: rgba(0, 122, 255, 0.7); /* Base color, can be overridden by status */
+  /* --base-opacity is set inline in JSX */
+  opacity: var(--base-opacity);
+  transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out, background-color 0.3s ease-in-out;
+  transform-origin: center center;
+}
+
+/* Define size for each wave layer using nth-child or specific classes */
+.wave-1 { width: 20%; height: 20%; z-index: 5; --base-opacity: 0.8; background-color: rgba(100, 180, 255, 0.9);}
+.wave-2 { width: 40%; height: 40%; z-index: 4; --base-opacity: 0.6; background-color: rgba(70, 160, 255, 0.7);}
+.wave-3 { width: 60%; height: 60%; z-index: 3; --base-opacity: 0.4; background-color: rgba(40, 140, 255, 0.5);}
+.wave-4 { width: 80%; height: 80%; z-index: 2; --base-opacity: 0.3; background-color: rgba(20, 120, 255, 0.4);}
+.wave-5 { width: 100%; height: 100%; z-index: 1; --base-opacity: 0.2; background-color: rgba(0, 100, 220, 0.3);}
+
+
+/* --- IDLE State --- */
+.jarvis-circle.status-idle .wave {
+  animation-name: idleWavePulse;
+  animation-duration: calc(3s + var(--wave-index) * 0.3s); /* Stagger duration */
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+  animation-delay: calc(var(--wave-index) * 0.1s);
+}
+
+@keyframes idleWavePulse {
+  0%, 100% {
+    transform: scale(0.95);
+    opacity: calc(var(--base-opacity) * 0.8);
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: var(--base-opacity);
+  }
+}
+.jarvis-circle.status-idle .wave-1 { animation-duration: 2s; transform: scale(1); } /* Central core more stable */
+.jarvis-circle.status-idle .wave-1 { background-color: rgba(120, 200, 255, 1); }
+
+
+/* --- PROCESSING State --- */
+.jarvis-circle.status-processing .wave {
+  animation-name: processingWaveSpin;
+  animation-duration: 2s;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear; /* Consistent speed */
+  background-color: rgba(180, 120, 255, 0.6); /* Purplish for processing */
+}
+.jarvis-circle.status-processing .wave-1 { background-color: rgba(200, 150, 255, 0.9); animation-name: processingCorePulse; animation-duration: 1s; animation-timing-function: ease-in-out;}
+.jarvis-circle.status-processing .wave-2 { animation-delay: 0.1s; transform-origin: 40% 40%;}
+.jarvis-circle.status-processing .wave-3 { animation-delay: 0.2s; transform-origin: 60% 60%;}
+.jarvis-circle.status-processing .wave-4 { animation-delay: 0.3s; transform-origin: 45% 55%;}
+.jarvis-circle.status-processing .wave-5 { animation-delay: 0.4s; transform-origin: 55% 45%;}
+
+
+@keyframes processingWaveSpin {
+  0% { transform: scale(1) rotate(0deg); opacity: var(--base-opacity); }
+  25% { transform: scale(0.9) rotate(90deg); opacity: calc(var(--base-opacity) * 0.7); }
+  50% { transform: scale(1.1) rotate(180deg); opacity: var(--base-opacity); }
+  75% { transform: scale(0.9) rotate(270deg); opacity: calc(var(--base-opacity) * 0.7); }
+  100% { transform: scale(1) rotate(360deg); opacity: var(--base-opacity); }
+}
+@keyframes processingCorePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+
+/* --- HEARING State --- */
+/* Base styles for hearing - JS will mostly override transform and opacity */
+.jarvis-circle.status-hearing .wave {
+  background-color: rgba(0, 200, 150, 0.7); /* Greenish for hearing */
+  /* The transition for transform/opacity will be set by JS for faster response */
+}
+.jarvis-circle.status-hearing .wave.js-animating {
+    /* Initial state for JS animation to transition from */
+    transform: scale(1);
+    opacity: var(--base-opacity);
+}
+
+/* --- SPEAKING State --- */
+/* Base styles for speaking - JS will mostly override transform and opacity */
+.jarvis-circle.status-speaking .wave {
+  background-color: rgba(0, 150, 255, 0.8); /* Bright blue for speaking */
+}
+.jarvis-circle.status-speaking .wave.js-animating {
+    transform: scale(1);
+    opacity: var(--base-opacity);
+}
