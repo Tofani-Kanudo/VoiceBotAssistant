@@ -1,81 +1,58 @@
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
-import torch
 import asyncio
 import requests
 import logging
 from logging_config import setup_logging, log_error_with_traceback
+from llama_cpp import Llama
 
-model_name = "facebook/blenderbot-400M-distill"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+MODEL_PATH = "./llama.cpp/models/mistral-7b-instruct-v0.1.Q4_K_M.gguf"
+
+# Initialize the LLM
+llm = Llama(
+    model_path=MODEL_PATH,
+    n_ctx=2048,
+    n_threads=6,
+    n_gpu_layers=32,  # Set to 0 if you want CPU-only
+    use_mlock=True,
+    embedding=False,
+)
 
 # Store conversation history
 conversation_history = []
-
-# Add API configuration
-API_URL = "https://api.aimlapi.com/chat/completions"
-API_KEY = "d86b1c0acd254bebb70ec1802eeb3e20"
 
 # Initialize logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
-def format_prompt(user_input: str) -> str:
-    """Format the prompt with conversation history for BlenderBot."""
-    global conversation_history
-    # Add user input to history
-    conversation_history.append(f"Human: {user_input}")
-    
-    # Format the full conversation
-    full_prompt = " ".join(conversation_history)
-    return full_prompt
-
-def ask_bot(user_input, chat_history_ids=None):
-    # Encode user input + past history
-    new_input_ids = tokenizer.encode(user_input + tokenizer.eos_token, return_tensors='pt')
-
-    # Append tokens to chat history (or start it)
-    bot_input_ids = torch.cat([chat_history_ids, new_input_ids], dim=-1) if chat_history_ids is not None else new_input_ids
-
-    # Generate response
-    chat_history_ids = model.generate(bot_input_ids, max_length=1000, pad_token_id=tokenizer.eos_token_id)
-
-    # Decode last response
-    response = tokenizer.decode(chat_history_ids[:, bot_input_ids.shape[-1]:][0], skip_special_tokens=True)
-
-    return response, chat_history_ids
+def format_prompt(convo):
+    prompt = ""
+    for turn in convo:
+        prompt += f"[INST] {turn['user']} [/INST] {turn['bot']}\n"
+    prompt += f"[INST] {convo[-1]['user']} [/INST]"
+    return prompt
 
 def ask_bot_api(user_message):
     """Handle API-based chat completions"""
     global conversation_history
     try:
+        user_message = user_message.strip()
+
         logger.info(f"Received user message: {user_message}")
 
-        conversation_history.append({"role": "user", "content": user_message})
+        conversation_history.append({"user": user_message, "bot": ""})
         logger.debug(f"Updated conversation history: {conversation_history}")
 
-        payload = {
-            "messages": conversation_history,
-            "temperature": 0.7,
-            "model": "gpt-3.5-turbo"
-        }
+        # Format input for model
+        prompt = format_prompt(conversation_history)
 
-        headers = {
-            "Authorization": f"Bearer {API_KEY}",
-            "Content-Type": "application/json"
-        }
+        # Generate model response
+        output = llm(prompt, max_tokens=256, stop=["</s>"], echo=False)
+        reply = output["choices"][0]["text"].strip()
 
-        logger.info("Sending request to LLM API")
-        response = requests.post(API_URL, json=payload, headers=headers)
-        response.raise_for_status()
-        data = response.json()
-        logger.debug(f"API response: {data}")
+        # Save bot reply to conversation
+        conversation_history[-1]["bot"] = reply
+        logger.info(f"Generated bot response: {reply}")
 
-        bot_reply = data["choices"][0]["message"]["content"]
-        conversation_history.append({"role": "assistant", "content": bot_reply})
-        logger.info(f"Generated bot response: {bot_reply}")
-
-        return bot_reply
+        return reply
     except requests.exceptions.RequestException as e:
         log_error_with_traceback(logger, f"API request failed: {str(e)}")
         return f"Error: {e}"
