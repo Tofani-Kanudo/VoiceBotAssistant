@@ -1,10 +1,13 @@
 import logging
 import datetime
 import traceback
+import os
 log_file = None
 def setup_logging():
     global log_file
     if log_file is None:
+        if not os.path.exists('logs'):
+            os.makedirs('logs')
         log_file = f'logs/voicebot_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
     logging.basicConfig(
         level=logging.INFO,

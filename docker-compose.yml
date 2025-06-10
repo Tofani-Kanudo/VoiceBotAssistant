@@ -1,0 +1,28 @@
+services:
+  backend:
+    platform: linux/amd64
+    build: ./voicebot-backend
+    container_name: voicebot-backend
+    ports:
+      - "8000:8000"
+    networks:
+      - voicebot-net
+    volumes:
+      - /Users/dablu/my_drive/VoiceBotAssistant/voicebot-backend/mistral-7b-instruct-v0.1.Q4_K_M.gguf:/app/mistral-7b-instruct-v0.1.Q4_K_M.gguf:ro
+    environment:
+      - MODEL_PATH=/app/mistral-7b-instruct-v0.1.Q4_K_M.gguf
+  frontend:
+    build: ./voicebot-frontend
+    container_name: voicebot-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_BACKEND_WS_URL=ws://localhost:8000/ws
+    depends_on:
+      - backend
+    networks:
+      - voicebot-net
+
+networks:
+  voicebot-net:
+    driver: bridge 

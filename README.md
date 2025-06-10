@@ -16,6 +16,45 @@ VoiceBotAssistant/
 - Node.js 16 or higher
 - npm or yarn
 - FFmpeg (for audio processing)
+- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/)
+- Sufficient disk space for the GGUF model file (several GBs)
+
+## 1. Download the GGUF Model File
+
+You need to download the `mistral-7b-instruct-v0.1.Q4_K_M.gguf` model file before running the backend. You can do this manually or by running the provided script:
+
+### **Option 1: Manual Download**
+1. Download the model from [TheBloke's HuggingFace page](https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GGUF).
+2. Place the file at:
+   ```
+   voicebot-backend/mistral-7b-instruct-v0.1.Q4_K_M.gguf
+   ```
+
+### **Option 2: Scripted Download**
+Run the following script to automatically download the model:
+```sh
+bash download_model.sh
+```
+
+## 2. Build and Run the Application with Docker Compose
+
+From the project root directory, run:
+```sh
+docker-compose build
+docker-compose up
+```
+- The backend will be available at [http://localhost:8000](http://localhost:8000)
+- The frontend will be available at [http://localhost:3000](http://localhost:3000)
+
+## 3. Model File Mounting
+- The model file is mounted into the backend container using a Docker volume.
+- If you change the model file location, update the `docker-compose.yml` accordingly.
+
+## 4. Environment Variables
+- The backend uses the `MODEL_PATH` environment variable to locate the GGUF model file. This is set automatically in `docker-compose.yml`.
+
+## 5. Development
+- For development, you can still run the backend and frontend locally, but ensure the model file path is correct in your environment.
 
 ## Backend Setup
 

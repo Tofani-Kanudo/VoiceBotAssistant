@@ -14,7 +14,7 @@ const ChatInterface = () => {
 
   useEffect(() => {
     if (isCallActive) {
-      const socket = new WebSocket('ws://localhost:8000/ws');
+      const socket = new WebSocket(process.env.REACT_APP_BACKEND_WS_URL || 'ws://localhost:8000/ws');
       
       socket.onmessage = async (event) => {
         const response = JSON.parse(event.data);

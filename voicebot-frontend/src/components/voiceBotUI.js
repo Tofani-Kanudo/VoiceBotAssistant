@@ -34,6 +34,8 @@ const VoiceBotUI = () => {
     const silenceTimerRef = useRef(null);
     const audioInputIntervalRef = useRef(null);
     const clientId = useRef(uuidv4());
+    const audioQueueRef = useRef([]);
+    const isPlayingRef = useRef(false);
 
     useEffect(() => {
         isRecordingRef.current = isRecording;
@@ -42,9 +44,17 @@ const VoiceBotUI = () => {
     // WebSocket setup
     useEffect(() => {
         if (isCallActive) {
-            ws.current = new WebSocket(`ws://localhost:8000/ws/${clientId.current}`);
+            ws.current = new WebSocket((process.env.REACT_APP_BACKEND_WS_URL || 'ws://localhost:8000/ws') + `/${clientId.current}`);
             
+            ws.current.onopen = () => {
+                setButtonFaded(true);
+                setHasStarted(true);
+            };
             ws.current.onmessage = handleWebSocketMessage;
+            ws.current.onclose = () => {
+                setHasStarted(false);
+                setButtonFaded(false);
+            };
             
             return () => {
                 if (ws.current) {
@@ -63,21 +73,68 @@ const VoiceBotUI = () => {
             return;
         }
 
-        setCurrentStatus("Processing...");
-        setIsProcessing(true);
-        
-        if (response.type === 'audio') {
+        if (response.type === 'audio_chunk') {
+            // Decode audio chunk
             const audioBlob = new Blob(
                 [new Uint8Array(atob(response.data).split("").map(c => c.charCodeAt(0)))],
                 { type: 'audio/mp3' }
             );
             const audioUrl = URL.createObjectURL(audioBlob);
-            playAudio(audioUrl);
-            setMessages(prev => [...prev, 'Bot: Audio response received']);
+            // Queue the audio chunk
+            audioQueueRef.current.push(audioUrl);
+            // Append bot text chunk to transcript
+            setMessages(prev => {
+                // If this is the first chunk, add user text
+                let newMessages = [...prev];
+                if (response.user_text) {
+                    newMessages.push({ sender: 'You', text: response.user_text });
+                }
+                // Always append bot chunk
+                newMessages.push({ sender: 'Bot', text: response.bot_text });
+                return newMessages;
+            });
+            // Start playing if not already
+            if (!isPlayingRef.current) {
+                playNextAudioChunk();
+            }
+            // If is_final, you may want to do something (e.g., set status)
+            if (response.is_final) {
+                setCurrentStatus("Idle");
+                setIsProcessing(false);
+            } else {
+                setCurrentStatus("Processing...");
+                setIsProcessing(true);
+            }
         }
-        
-        setCurrentStatus("Idle");
-        setIsProcessing(false);
+    };
+
+    const playNextAudioChunk = () => {
+        if (audioQueueRef.current.length === 0) {
+            isPlayingRef.current = false;
+            setIsPlayingAudio(false);
+            setCurrentStatus("Idle");
+            if (isCallActive) {
+                startRecording();
+            }
+            return;
+        }
+        isPlayingRef.current = true;
+        setIsPlayingAudio(true);
+        setCurrentStatus("Playing Audio...");
+        const url = audioQueueRef.current.shift();
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+        }
+        audioRef.current = new Audio(url);
+        audioRef.current.play().catch(error => {
+            console.error("Error playing audio:", error);
+            setCurrentStatus("Error playing audio");
+            playNextAudioChunk();
+        });
+        audioRef.current.onended = () => {
+            playNextAudioChunk();
+        };
     };
 
     // Audio recording setup
@@ -236,9 +293,7 @@ const VoiceBotUI = () => {
 
     // Handle start button click
     const handleStart = async () => {
-        setButtonFaded(true);
         setTimeout(async () => {
-            setHasStarted(true);
             setIsCallActive(true);
             await startRecording();
         }, 400); // match fade duration
@@ -364,13 +419,26 @@ const VoiceBotUI = () => {
                             </Typography>
                         ) : (
                             messages.map((msg, index) => (
-                                <Typography
+                                <Box
                                     key={index}
-                                    variant="body1"
-                                    sx={{ mb: 1, fontWeight: msg.startsWith('You:') ? 'bold' : 'normal', color: theme.palette.text.primary }}
+                                    display="flex"
+                                    justifyContent={msg.sender === 'You' ? 'flex-end' : 'flex-start'}
+                                    mb={1}
                                 >
-                                    {msg}
-                                </Typography>
+                                    <Typography
+                                        variant="body1"
+                                        sx={{
+                                            p: 1,
+                                            borderRadius: 1,
+                                            backgroundColor: msg.sender === 'You' ? theme.palette.primary.main : theme.palette.background.paper,
+                                            color: msg.sender === 'You' ? theme.palette.primary.contrastText : theme.palette.text.primary,
+                                            fontWeight: msg.sender === 'You' ? 'bold' : 'normal',
+                                            maxWidth: '70%'
+                                        }}
+                                    >
+                                        {msg.text}
+                                    </Typography>
+                                </Box>
                             ))
                         )}
                     </Box>

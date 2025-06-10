@@ -1,0 +1,32 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+
+# C extensions
+*.egg-info/
+dist/
+build/
+
+# Model files
+mistral*.gguf
+*.gguf
+
+# Logs and environments
+logs/
+voicebot-env/
+.env
+
+# IDE and test files
+.idea/
+.vscode/
+tests/
+*.log
+
+# Git
+.git
+.gitignore
+
+# Misc
+.DS_Store
+README.md

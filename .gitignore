@@ -5,3 +5,5 @@ venv/
 .DS_Store
 voicebot-backend/llama.cpp
 voicebot-backend/logs
+voicebot-backend/voicebot-env
+*.gguf
